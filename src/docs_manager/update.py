@@ -1,5 +1,6 @@
 """GitHub template file synchronization module."""
 
+import os
 import sys
 from pathlib import Path
 from typing import Tuple
@@ -21,6 +22,9 @@ FILES_TO_SYNC = [
 
 # HTTP request timeout in seconds
 REQUEST_TIMEOUT = 30.0
+
+# Debug mode (set DEBUG=1 environment variable to enable)
+DEBUG = os.environ.get("DEBUG", "0") == "1"
 
 
 def get_project_root() -> Path:
@@ -80,11 +84,34 @@ def update_file(dest_path: str, content: str) -> Tuple[bool, str]:
         project_root = get_project_root()
         file_path = project_root / dest_path
 
+        # Debug: Print path information
+        if DEBUG:
+            print(f"  [DEBUG] Project root: {project_root}")
+            print(f"  [DEBUG] Target file: {file_path}")
+            print(f"  [DEBUG] File exists: {file_path.exists()}")
+
+        # Read existing content for comparison
+        existing_content = ""
+        if file_path.exists():
+            existing_content = file_path.read_text(encoding="utf-8")
+            if DEBUG:
+                print(f"  [DEBUG] Existing content length: {len(existing_content)} bytes")
+                print(f"  [DEBUG] New content length: {len(content)} bytes")
+                print(f"  [DEBUG] Content is different: {existing_content != content}")
+
         # Create parent directory if it doesn't exist
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Write content
         file_path.write_text(content, encoding="utf-8")
+
+        # Verify write
+        if DEBUG:
+            written_content = file_path.read_text(encoding="utf-8")
+            if written_content == content:
+                print(f"  [DEBUG] Write verification: SUCCESS")
+            else:
+                print(f"  [DEBUG] Write verification: FAILED")
 
         return True, f"Updated: {dest_path}"
 

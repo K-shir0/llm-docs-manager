@@ -190,6 +190,86 @@ sequenceDiagram
 * GitHub の raw content API はレート制限あり（認証なし: 60リクエスト/時間）
 * 本ツールは2ファイルのみ取得するため、通常使用では問題なし
 
+### 実行方法
+
+#### 推奨方法（uv run）
+
+```bash
+uv run python -m docs_manager.update
+```
+
+この方法では：
+- 最新のコードが確実に実行される
+- 依存関係が自動的にインストールされる
+- プロジェクトルートで実行する必要がある
+
+#### 代替方法（uvx）
+
+```bash
+uvx --from . docs-manager-update
+```
+
+**注意**: uvx はキャッシュを使用するため、コード変更後は古いバージョンが実行される可能性があります。
+
+#### デバッグモード
+
+問題調査時は環境変数 `DEBUG=1` を設定してください：
+
+```bash
+DEBUG=1 uv run python -m docs_manager.update
+```
+
+デバッグモードでは以下の情報が表示されます：
+- プロジェクトルートのパス
+- 書き込み先ファイルの絶対パス
+- ファイルの存在確認
+- 既存/新規コンテンツのバイト数
+- 内容の差異の有無
+- 書き込み検証結果
+
+### トラブルシューティング
+
+#### ファイルが更新されない
+
+**症状**: ツールが「Updated」と表示するが、実際にファイルが変更されていない
+
+**原因**: uvx がキャッシュされた古いバージョンを実行している
+
+**解決策**:
+```bash
+# 方法1: uv run を使用（推奨）
+uv run python -m docs_manager.update
+
+# 方法2: キャッシュをクリア
+uv cache clean
+uvx --from . docs-manager-update
+```
+
+#### httpx モジュールが見つからない
+
+**症状**: `ModuleNotFoundError: No module named 'httpx'`
+
+**原因**: Python環境に httpx がインストールされていない
+
+**解決策**: `uv run` を使用してください（依存関係を自動管理）
+
+#### ネットワークエラー
+
+**症状**: `Network error` または `Request timed out`
+
+**解決策**:
+- インターネット接続を確認
+- プロキシ設定を確認
+- GitHub へのアクセスが可能か確認
+
+#### レート制限エラー
+
+**症状**: `GitHub API rate limit exceeded`
+
+**原因**: 認証なしの GitHub API は 60リクエスト/時間 に制限されている
+
+**解決策**: 1時間待ってから再実行
+
 ## 関連リンク
 
 * [K-shir0/docs-boilerplate-llm リポジトリ](https://github.com/K-shir0/docs-boilerplate-llm)
