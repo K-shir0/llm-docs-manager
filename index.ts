@@ -1,8 +1,10 @@
 #!/usr/bin/env bun
 
 import { join } from "path";
+import packageJson from "./package.json";
 
 const DEBUG = process.env.DEBUG === "1";
+const VERSION = packageJson.version;
 
 interface FileConfig {
   path: string;
@@ -114,6 +116,7 @@ async function updateFile(
 
 async function main(): Promise<void> {
   const projectRoot = getProjectRoot();
+  debug(`Version: ${VERSION}`);
   debug(`Project root: ${projectRoot}`);
 
   console.log("Starting GitHub template synchronization...\n");
