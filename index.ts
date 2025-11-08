@@ -35,6 +35,7 @@ function getProjectRoot(): string {
   // Get the directory where this script is located
   const currentFile = fileURLToPath(import.meta.url);
   const scriptDir = dirname(currentFile);
+  console.log(`Script directory: ${scriptDir}`);
   return scriptDir;
 }
 
