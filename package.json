@@ -1,19 +1,23 @@
 {
-  "name": "docs-manager",
-  "version": "0.1.0",
-  "module": "index.ts",
-  "type": "module",
-  "private": true,
-  "bin": {
-    "docs-manager-update": "./index.ts"
-  },
-  "scripts": {
-    "update": "bun run index.ts"
-  },
-  "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  }
+	"name": "docs-manager",
+	"version": "0.1.0",
+	"module": "index.ts",
+	"type": "module",
+	"private": true,
+	"bin": {
+		"docs-manager-update": "./index.ts"
+	},
+	"scripts": {
+		"update": "bun run index.ts",
+		"lint": "biome lint .",
+		"format": "biome format --write .",
+		"check": "biome check --write ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.4",
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	}
 }
