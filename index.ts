@@ -1,7 +1,6 @@
 #!/usr/bin/env bun
 
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
+import { join } from "path";
 
 const DEBUG = process.env.DEBUG === "1";
 
@@ -32,11 +31,11 @@ function debug(message: string): void {
 }
 
 function getProjectRoot(): string {
-  // Get the directory where this script is located
-  const currentFile = fileURLToPath(import.meta.url);
-  const scriptDir = dirname(currentFile);
-  console.log(`Script directory: ${scriptDir}`);
-  return scriptDir;
+  // Use the current working directory where the command was executed
+  // This ensures files are written to the user's project, not bunx's temp directory
+  const projectRoot = process.cwd();
+  debug(`Current working directory: ${projectRoot}`);
+  return projectRoot;
 }
 
 async function fetchFile(filePath: string): Promise<string> {
