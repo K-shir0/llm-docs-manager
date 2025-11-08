@@ -27,6 +27,16 @@ const FILES_TO_SYNC: FileConfig[] = [
 		destination: ".claude/skills",
 		isDirectory: true,
 	},
+	{
+		path: ".claude/agents",
+		destination: ".claude/agents",
+		isDirectory: true,
+	},
+	{
+		path: ".claude/commands",
+		destination: ".claude/commands",
+		isDirectory: true,
+	},
 ];
 
 const GITHUB_RAW_BASE_URL =
