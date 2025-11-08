@@ -57,22 +57,21 @@ graph LR
 
 ```
 docs-manager/
-├── src/
-│   └── docs_manager/
-│       ├── __init__.py           # パッケージ初期化
-│       └── update.py             # メインロジック
+├── index.ts                       # メインロジック（エントリーポイント）
 ├── docs/
 │   ├── requirements/
 │   │   └── template-sync.md      # 本要件定義書
 │   └── design.md.sample          # 更新対象
 ├── CLAUDE.md                      # 更新対象
-├── pyproject.toml                 # プロジェクト設定
+├── package.json                   # プロジェクト設定
+├── tsconfig.json                  # TypeScript設定
+├── bun.lock                       # 依存関係ロックファイル
 └── README.md
 ```
 
 #### 2. データフロー
 
-1. **ユーザー実行**: `uvx --from . docs-manager-update` を実行
+1. **ユーザー実行**: `bun run index.ts` を実行
 2. **GitHub API 呼び出し**:
    - エンドポイント: `https://raw.githubusercontent.com/K-shir0/docs-boilerplate-llm/main/{file_path}`
    - 対象ファイル:
@@ -92,27 +91,30 @@ docs-manager/
 
 #### 4. 依存関係
 
-* **HTTP クライアント**: `httpx` (モダンな async 対応 HTTP ライブラリ)
-* **ビルドシステム**: `hatchling` (uv と相性が良い)
-* **Python バージョン**: >=3.11.10 (既存の .python-version に準拠)
+* **ランタイム**: Bun 1.0以降
+* **HTTP クライアント**: Bun組み込みの `fetch()` API使用（外部依存なし）
+* **ファイルI/O**: Bun組み込みの `Bun.write()` / `Bun.file()` 使用
+* **外部パッケージ**: 不要（Bunの標準APIのみで動作）
 
-#### 5. pyproject.toml 設定
+#### 5. package.json 設定
 
-```toml
-[project]
-name = "docs-manager"
-version = "0.1.0"
-requires-python = ">=3.11.10"
-dependencies = [
-    "httpx>=0.27.0",
-]
-
-[project.scripts]
-docs-manager-update = "docs_manager.update:main"
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+```json
+{
+  "name": "docs-manager",
+  "version": "0.1.0",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "docs-manager-update": "./index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
 ```
 
 ### 実行フロー
@@ -125,16 +127,16 @@ sequenceDiagram
     participant GitHub
     participant FileSystem
 
-    User->>CLI: uvx --from . docs-manager-update
-    CLI->>Fetcher: fetch_and_update()
+    User->>CLI: bun run index.ts
+    CLI->>Fetcher: main()
 
-    Fetcher->>GitHub: GET CLAUDE.md
+    Fetcher->>GitHub: fetch() CLAUDE.md
     GitHub-->>Fetcher: content
-    Fetcher->>FileSystem: write CLAUDE.md
+    Fetcher->>FileSystem: Bun.write() CLAUDE.md
 
-    Fetcher->>GitHub: GET docs/design.md.sample
+    Fetcher->>GitHub: fetch() docs/design.md.sample
     GitHub-->>Fetcher: content
-    Fetcher->>FileSystem: write docs/design.md.sample
+    Fetcher->>FileSystem: Bun.write() docs/design.md.sample
 
     Fetcher-->>CLI: success/failure report
     CLI-->>User: 結果表示
@@ -142,25 +144,28 @@ sequenceDiagram
 
 ### 実装の詳細
 
-#### update.py の主要機能
+#### index.ts の主要機能
 
 1. **main() 関数**: CLI エントリーポイント
-   - 引数解析（将来的な拡張に備え、必要に応じて実装）
    - 各ファイルの更新を順次実行
    - 結果をサマリー表示
+   - 終了コード設定（成功: 0、失敗: 1）
 
-2. **fetch_file() 関数**: GitHub からファイルを取得
+2. **fetchFile() 関数**: GitHub からファイルを取得
    - URL: `https://raw.githubusercontent.com/K-shir0/docs-boilerplate-llm/main/{file_path}`
-   - タイムアウト設定: 30秒
+   - 使用API: Bun組み込みの `fetch()`
+   - タイムアウト設定: 30秒（AbortController使用）
    - 戻り値: ファイル内容（文字列）またはエラー
 
-3. **update_file() 関数**: ローカルファイルに書き込み
+3. **updateFile() 関数**: ローカルファイルに書き込み
    - プロジェクトルートからの相対パスを計算
-   - 必要に応じてディレクトリを作成
+   - Bun.write() でファイル書き込み
+   - 書き込み検証機能（デバッグモード）
    - ファイル内容を UTF-8 で書き込み
 
 4. **エラーハンドリング**:
-   - HTTPステータスコードによる分岐
+   - HTTPステータスコードによる分岐（404, 403等）
+   - AbortErrorによるタイムアウト検出
    - 例外処理とユーザーフレンドリーなメッセージ
 
 ## その他の関心事
@@ -192,10 +197,33 @@ sequenceDiagram
 
 ### 実行方法
 
-#### 推奨方法（uv run）
+#### 推奨方法1（GitHubから直接実行 - bunx）
 
 ```bash
-uv run python -m docs_manager.update
+bunx --bun github:K-shir0/docs-manager
+```
+
+この方法では：
+- プロジェクトルートにいる必要がない（どこからでも実行可能）
+- GitHubの最新版を自動的に取得して実行
+- 他のプロジェクトから簡単にテンプレートを同期できる
+- **注意**: GitHubにpush済みである必要がある
+
+#### 推奨方法2（npm scripts）
+
+```bash
+bun run update
+```
+
+この方法では：
+- 最も簡潔なコマンド
+- package.jsonのscriptsを使用
+- プロジェクトルートで実行する必要がある
+
+#### 推奨方法3（直接実行）
+
+```bash
+bun run index.ts
 ```
 
 この方法では：
@@ -203,24 +231,20 @@ uv run python -m docs_manager.update
 - 依存関係が自動的にインストールされる
 - プロジェクトルートで実行する必要がある
 
-#### 代替方法（uvx）
-
-```bash
-uvx --from . docs-manager-update
-```
-
-**注意**: uvx はキャッシュを使用するため、コード変更後は古いバージョンが実行される可能性があります。
-
 #### デバッグモード
 
 問題調査時は環境変数 `DEBUG=1` を設定してください：
 
 ```bash
-DEBUG=1 uv run python -m docs_manager.update
+DEBUG=1 bun run update
+# または
+DEBUG=1 bun run index.ts
 ```
 
 デバッグモードでは以下の情報が表示されます：
 - プロジェクトルートのパス
+- 取得元URL
+- 取得したコンテンツのバイト数
 - 書き込み先ファイルの絶対パス
 - ファイルの存在確認
 - 既存/新規コンテンツのバイト数
@@ -233,25 +257,16 @@ DEBUG=1 uv run python -m docs_manager.update
 
 **症状**: ツールが「Updated」と表示するが、実際にファイルが変更されていない
 
-**原因**: uvx がキャッシュされた古いバージョンを実行している
+**原因**: Bunのキャッシュまたはファイルシステムの問題
 
 **解決策**:
 ```bash
-# 方法1: uv run を使用（推奨）
-uv run python -m docs_manager.update
+# デバッグモードで実行して詳細を確認
+DEBUG=1 bun run update
 
-# 方法2: キャッシュをクリア
-uv cache clean
-uvx --from . docs-manager-update
+# 書き込み検証が失敗する場合はファイルのパーミッションを確認
+ls -la CLAUDE.md docs/design.md.sample
 ```
-
-#### httpx モジュールが見つからない
-
-**症状**: `ModuleNotFoundError: No module named 'httpx'`
-
-**原因**: Python環境に httpx がインストールされていない
-
-**解決策**: `uv run` を使用してください（依存関係を自動管理）
 
 #### ネットワークエラー
 
@@ -274,5 +289,6 @@ uvx --from . docs-manager-update
 
 * [K-shir0/docs-boilerplate-llm リポジトリ](https://github.com/K-shir0/docs-boilerplate-llm)
 * [GitHub Raw Content API](https://docs.github.com/en/rest/repos/contents)
-* [uv - Python パッケージマネージャー](https://github.com/astral-sh/uv)
-* [httpx ドキュメント](https://www.python-httpx.org/)
+* [Bun - JavaScriptランタイム](https://bun.sh)
+* [Bun fetch API](https://bun.sh/docs/api/fetch)
+* [Bun File I/O](https://bun.sh/docs/api/file-io)

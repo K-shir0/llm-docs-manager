@@ -1,0 +1,19 @@
+{
+  "name": "docs-manager",
+  "version": "0.1.0",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "docs-manager-update": "./index.ts"
+  },
+  "scripts": {
+    "update": "bun run index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
